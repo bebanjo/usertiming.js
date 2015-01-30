@@ -38,6 +38,8 @@
     window.performance.userTimingJsPerformanceTimeline = false;
     window.performance.userTimingJsPerformanceTimelinePrefixed = false;
 
+    window.performance.userTimingJsPerformanceTimelineGet = false;
+
     // for prefixed support
     var prefixes = [];
     var methods = [];
@@ -217,96 +219,105 @@
             }
         };
 
-        if (typeof(window.performance.getEntries) !== 'function') {
-            /**
-             * Gets all entries from the Performance Timeline.
-             * http://www.w3.org/TR/performance-timeline/#dom-performance-getentries
-             *
-             * NOTE: This will only ever return marks and measures.
-             *
-             * @return {PerformanceEntry[]} Array of PerformanceEntrys
-             */
-            window.performance.getEntries = function() {
-                ensurePerformanceTimelineOrder();
+        /**
+         * Gets all entries from the Performance Timeline.
+         * http://www.w3.org/TR/performance-timeline/#dom-performance-getentries
+         *
+         * NOTE: This will only ever return marks and measures.
+         *
+         * @return {PerformanceEntry[]} Array of PerformanceEntrys
+         */
+        window.performance.userTimingJsPerformanceTimelineGetEntries = function() {
+            ensurePerformanceTimelineOrder();
 
-                // get a copy of all of our entries
-                return performanceTimeline.slice(0);
-            };
+            // get a copy of all of our entries
+            return performanceTimeline.slice(0);
+        };
+
+        /**
+         * Gets all entries from the Performance Timeline of the specified type.
+         * http://www.w3.org/TR/performance-timeline/#dom-performance-getentriesbytype
+         *
+         * NOTE: This will only work for marks and measures.
+         *
+         * @param {string} entryType Entry type (eg 'mark' or 'measure')
+         *
+         * @return {PerformanceEntry[]} Array of PerformanceEntrys
+         */
+        window.performance.userTimingJsPerformanceTimelineGetEntriesByType = function(entryType) {
+            // we only support marks/measures
+            if (typeof(entryType) === 'undefined' ||
+                (entryType !== 'mark' && entryType !== 'measure')) {
+                return [];
+            }
+
+            // see note in ensurePerformanceTimelineOrder() on why this is required
+            if (entryType === 'measure') {
+                ensurePerformanceTimelineOrder();
+            }
+
+            // find all entries of entryType
+            var entries = [];
+            for (i = 0; i < performanceTimeline.length; i++) {
+                if (performanceTimeline[i].entryType === entryType) {
+                    entries.push(performanceTimeline[i]);
+                }
+            }
+
+            return entries;
+        };
+
+        /**
+         * Gets all entries from the Performance Timeline of the specified
+         * name, and optionally, type.
+         * http://www.w3.org/TR/performance-timeline/#dom-performance-getentriesbyname
+         *
+         * NOTE: This will only work for marks and measures.
+         *
+         * @param {string} name Entry name
+         * @param {string} [entryType] Entry type (eg 'mark' or 'measure')
+         *
+         * @return {PerformanceEntry[]} Array of PerformanceEntrys
+         */
+        window.performance.userTimingJsPerformanceTimelineGetEntriesByName = function(name, entryType) {
+            if (entryType && entryType !== 'mark' && entryType !== 'measure') {
+                return [];
+            }
+
+            // see note in ensurePerformanceTimelineOrder() on why this is required
+            if (typeof(entryType) !== 'undefined' && entryType === 'measure') {
+                ensurePerformanceTimelineOrder();
+            }
+
+            // find all entries of the name and (optionally) type
+            var entries = [];
+            for (i = 0; i < performanceTimeline.length; i++) {
+                if (typeof(entryType) !== 'undefined' &&
+                    performanceTimeline[i].entryType !== entryType) {
+                    continue;
+                }
+
+                if (performanceTimeline[i].name === name) {
+                    entries.push(performanceTimeline[i]);
+                }
+            }
+
+            return entries;
+        };
+
+        if (typeof(window.performance.getEntries) !== 'function') {
+            window.performance.userTimingJsPerformanceTimelineGet = true;
+            window.performance.getEntries = window.performance.userTimingJsPerformanceTimelineGetEntries;
         }
 
         if (typeof(window.performance.getEntriesByType) !== 'function') {
-            /**
-             * Gets all entries from the Performance Timeline of the specified type.
-             * http://www.w3.org/TR/performance-timeline/#dom-performance-getentriesbytype
-             *
-             * NOTE: This will only work for marks and measures.
-             *
-             * @param {string} entryType Entry type (eg 'mark' or 'measure')
-             *
-             * @return {PerformanceEntry[]} Array of PerformanceEntrys
-             */
-            window.performance.getEntriesByType = function(entryType) {
-                // we only support marks/measures
-                if (typeof(entryType) === 'undefined' ||
-                    (entryType !== 'mark' && entryType !== 'measure')) {
-                    return [];
-                }
-
-                // see note in ensurePerformanceTimelineOrder() on why this is required
-                if (entryType === 'measure') {
-                    ensurePerformanceTimelineOrder();
-                }
-
-                // find all entries of entryType
-                var entries = [];
-                for (i = 0; i < performanceTimeline.length; i++) {
-                    if (performanceTimeline[i].entryType === entryType) {
-                        entries.push(performanceTimeline[i]);
-                    }
-                }
-
-                return entries;
-            };
+            window.performance.userTimingJsPerformanceTimelineGet = true;
+            window.performance.getEntriesByType = window.performance.userTimingJsPerformanceTimelineGetEntriesByType;
         }
 
         if (typeof(window.performance.getEntriesByName) !== 'function') {
-            /**
-             * Gets all entries from the Performance Timeline of the specified
-             * name, and optionally, type.
-             * http://www.w3.org/TR/performance-timeline/#dom-performance-getentriesbyname
-             *
-             * NOTE: This will only work for marks and measures.
-             *
-             * @param {string} name Entry name
-             * @param {string} [entryType] Entry type (eg 'mark' or 'measure')
-             *
-             * @return {PerformanceEntry[]} Array of PerformanceEntrys
-             */
-            window.performance.getEntriesByName = function(name, entryType) {
-                if (entryType && entryType !== 'mark' && entryType !== 'measure') {
-                    return [];
-                }
-
-                // see note in ensurePerformanceTimelineOrder() on why this is required
-                if (typeof(entryType) !== 'undefined' && entryType === 'measure') {
-                    ensurePerformanceTimelineOrder();
-                }
-
-                // find all entries of the name and (optionally) type
-                var entries = [];
-                for (i = 0; i < performanceTimeline.length; i++) {
-                    if (typeof(entryType) !== 'undefined' &&
-                        performanceTimeline[i].entryType !== entryType) {
-                        continue;
-                    }
-
-                    if (performanceTimeline[i].name === name) {
-                        entries.push(performanceTimeline[i]);
-                    }
-                }
-
-                return entries;
-            };
+            window.performance.userTimingJsPerformanceTimelineGet = true;
+            window.performance.getEntriesByName = window.performance.userTimingJsPerformanceTimelineGetEntriesByName;
         }
     }
 
